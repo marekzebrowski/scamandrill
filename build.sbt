@@ -40,6 +40,8 @@ publishMavenStyle := true
 
 pomIncludeRepository := { _ => false }
 
+publishTo := Some(Resolver.file("mvn-repo", new File(Path.userHome + "/git/mvn-repo/")))
+
 //pgpPublicRing := file("/Users/dzsessona/Documents/mykeys/diegopgp.asc")
 
 pomExtra := (
