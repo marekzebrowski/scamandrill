@@ -1,7 +1,6 @@
 package com.joypeg.scamandrill.client
 
-import akka.http.scaladsl.unmarshalling._
-import akka.stream.{Materializer, ActorMaterializer}
+import akka.stream.Materializer
 import spray.json._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,16 +19,13 @@ object MandrillResponseExceptionJsonProtocol extends DefaultJsonProtocol {
 object MandrillResponseException {
 
   def apply(ex: UnsuccessfulResponseException)(implicit mat: Materializer, ec: ExecutionContext): Future[MandrillResponseException] = {
-
-    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     import MandrillResponseExceptionJsonProtocol._
-
-    Unmarshal(ex.response.entity).to[MandrillError].map { me =>
-      new MandrillResponseException(
-        ex.response.status.intValue,
-        ex.response.status.reason,
-        me
-      )
-    }
+    val me = ex.msg.parseJson.convertTo[MandrillError]
+    Future.successful(new MandrillResponseException(
+      ex.status,
+      ex.reason,
+      me
+    )
+    )
   }
 }

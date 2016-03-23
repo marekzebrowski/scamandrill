@@ -3,13 +3,14 @@ package com.joypeg.scamandrill.client
 import akka.actor.ActorSystem
 import akka.http.scaladsl._
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.joypeg.scamandrill.utils.SimpleLogger
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * This trait abstract on top of spray the handling of all request / response to the mandrill API. Its
@@ -40,19 +41,26 @@ trait ScamandrillSendReceive extends SimpleLogger {
     */
   def executeQuery[S](endpoint: String, reqBodyF: Future[RequestEntity])(handler: (HttpResponse => Future[S])): Future[S] = {
 
+    def rh(tryHttpInt: (Try[HttpResponse], Int)): Future[S] = {
+      tryHttpInt._1 match {
+        case Success(rsp) => if(rsp.status.isSuccess()) handler(rsp)
+        else {
+          Unmarshal(rsp.entity).to[String].flatMap ( msg =>
+            Future.failed(new UnsuccessfulResponseException(rsp.status.intValue(), rsp.status.reason(), msg))
+          )
+        }
+        case Failure(e) => Future.failed(e)
+      }
+    }
+
     //TODO: reqbody <: MandrillResponse and S :< MandrillRequest
     reqBodyF.flatMap { reqBody =>
       val request = HttpRequest(method = HttpMethods.POST, uri = Uri("/api/1.0" + endpoint), entity = reqBody)
       val clientFlow = Http().cachedHostConnectionPoolHttps[Int]("mandrillapp.com")
-      val futureResponse = Source.single(request -> 1).via(clientFlow).runWith(Sink.head)
-      futureResponse.flatMap { case (tryResponse, dummyInt) =>
-        tryResponse match {
-          case Success(rsp) => if(rsp.status.isSuccess()) handler(rsp)
-            else Future.failed(new UnsuccessfulResponseException(rsp))
-          case Failure(e) => Future.failed(e)
-        }
-      }
+      val futureResponse = Source.single(request -> 1).via(clientFlow).map[Future[S]](rh).runWith(Sink.head)
+      futureResponse.flatMap{ f => f }
     }
+
   }
 
   /**
