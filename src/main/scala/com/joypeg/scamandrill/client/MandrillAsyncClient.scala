@@ -5,6 +5,7 @@ import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpResponse, _}
 import akka.http.scaladsl.unmarshalling.Unmarshaller._
 import akka.http.scaladsl.unmarshalling._
+import akka.stream.scaladsl.{Flow, Source}
 import com.joypeg.scamandrill.models._
 import spray.json.RootJsonFormat
 
@@ -60,8 +61,19 @@ class MandrillAsyncClient(val system: ActorSystem = ActorSystem("scamandrill")) 
     executeQuery[List[MSendResponse]](Endpoints.send.endpoint, marshal(msg))(unmarshal[List[MSendResponse]])
   }
 
+  def runMessagesSendSource(src: Source[MSendMessage, _]): Future[StreamResults] = {
+    val m = marshal[MSendMessage](_)
+    runSource(Endpoints.send.endpoint, src, m)
+  }
+
+
   override def messagesSendTemplate(msg: MSendTemplateMessage): Future[List[MSendResponse]] = {
     executeQuery[List[MSendResponse]](Endpoints.sendTemplate.endpoint, marshal(msg))(unmarshal[List[MSendResponse]])
+  }
+
+  def runMessagesSendTemplateSource(src: Source[MSendTemplateMessage, _]): Future[StreamResults] = {
+    val m = marshal[MSendTemplateMessage](_)
+    runSource(Endpoints.sendTemplate.endpoint, src, m)
   }
 
   override def messagesSearch(q: MSearch): Future[List[MSearchResponse]] = {
