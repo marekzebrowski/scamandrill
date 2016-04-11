@@ -107,7 +107,7 @@ trait ScamandrillSendReceive extends SimpleLogger {
 
   def runSource[T, S](endpoint: String, src: Source[T, _], m: T => Future[MessageEntity]): Future[StreamResults] = {
     val toReq = toRequest(endpoint)(_)
-    src.mapAsync(1)(m).map(toReq).via(clientFlow).mapAsync(1)(rhTry).runFold(StreamResults(0, 0))(addScResult)
+    src.mapAsyncUnordered(1)(m).map(toReq).via(clientFlow).mapAsyncUnordered(1)(rhTry).runFold(StreamResults(0, 0))(addScResult)
   }
 
 
