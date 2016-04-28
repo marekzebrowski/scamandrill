@@ -3,6 +3,7 @@ package com.joypeg.scamandrill.client
 import akka.actor.ActorSystem
 import akka.http.scaladsl._
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.QueueOfferResult.Enqueued
 import akka.stream.scaladsl.{Keep, Sink, Source}
@@ -35,8 +36,9 @@ trait ScamandrillSendReceive extends SimpleLogger {
 
   import system.dispatcher
 
-  val clientFlow = Http().cachedHostConnectionPoolHttps[Int]("mandrillapp.com")
-  val queueFlow = Http().cachedHostConnectionPoolHttps[Promise[HttpResponse]]("mandrillapp.com")
+  val cps = ConnectionPoolSettings(system).withMaxConnections(64).withPipeliningLimit(1).withMaxOpenRequests(64)
+  val clientFlow = Http().cachedHostConnectionPoolHttps[Int](host = "mandrillapp.com", settings = cps)
+  val queueFlow = Http().cachedHostConnectionPoolHttps[Promise[HttpResponse]](host = "mandrillapp.com", settings = cps)
 
   val queue = Source.queue[(HttpRequest, Promise[HttpResponse])](1024, OverflowStrategy.dropNew)
     .via(queueFlow)
