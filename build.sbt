@@ -1,4 +1,5 @@
 import SonatypeKeys._
+import sbt.Keys._
 
 sonatypeSettings
 
@@ -10,20 +11,23 @@ profileName := "com.github.dzsessona"
 
 description := "Scala client for Mandrill api"
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
-resolvers ++= Seq("spray repo" at "http://repo.spray.io/")
+resolvers ++= Seq(
+  "Mewe relaases" at "https://nexus.groupl.es/repository/maven-releases/",
+  "Mewe snapshosts" at "https://nexus.groupl.es/repository/maven-snapshots/"
+)
 
 parallelExecution in Test := true
 
 libraryDependencies ++= {
-  val akkaV = "2.4.4"
+  val akkaV = "2.4.7"
   Seq(
     "io.spray"          %% "spray-json"       % "1.3.2",
     "com.typesafe.akka" %% "akka-actor"       % akkaV,
-    "com.typesafe.akka" %% "akka-http-experimental" % "2.4.3",
+    "com.typesafe.akka" %% "akka-http-experimental" % "2.4.7",
     "com.typesafe.akka" %% "akka-http-spray-json-experimental" % "2.4.2",
     "com.typesafe"      % "config"            % "1.3.0",
     "org.slf4j"         % "slf4j-api"         % "1.7.14"
@@ -40,7 +44,15 @@ publishMavenStyle := true
 
 pomIncludeRepository := { _ => false }
 
-publishTo := Some(Resolver.file("mvn-repo", new File(Path.userHome + "/git/mvn-repo/")))
+publishTo <<= (version) { v =>
+  val nexus = "https://nexus.groupl.es/"
+  if (v.endsWith("-SNAPSHOT"))
+    Some("snapshots" at nexus+"repository/maven-snapshots/")
+  else
+    Some("releases" at nexus+"repository/maven-releases/")
+}
+
+credentials += Credentials(Path.userHome / ".ivy2" / ".meweCredentials")
 
 //pgpPublicRing := file("/Users/dzsessona/Documents/mykeys/diegopgp.asc")
 
